@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PF2e Stat Blocks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style id="pagecss">@page { size: letter portrait; margin: 0.4in; }</style>
+<style>
+:root {
+  --ink: #1c1712; --muted: #6b5f52; --rule: #7a1f17; --paper: #fff;
+  --trait: #5d0000; --trait-edge: #d8c483; --uncommon: #98513d; --rare: #002664;
+  --unique: #54166e; --size: #3b7b59; --align: #576293;
+  --ui-bg: #f3f0ea; --ui-panel: #fbfaf7; --ui-line: #ddd5c8; --ui-ink: #2a251f; --ui-accent: #7a1f17;
+  --fs: 8.5pt; --sheet-w: 7.7in;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--ui-bg); color: var(--ui-ink); font: 14px/1.4 Inter, system-ui, sans-serif; }
+
+/* ---------- app shell ---------- */
+.app { display: grid; grid-template-columns: 340px 1fr; min-height: 100vh; }
+aside.panel { background: var(--ui-panel); border-right: 1px solid var(--ui-line); padding: 18px 16px; position: sticky; top: 0; height: 100vh; overflow: auto; display: flex; flex-direction: column; gap: 18px; }
+.panel h1 { font: 700 20px/1.1 "Crimson Pro", Georgia, serif; margin: 0; letter-spacing: .02em; }
+.panel h1 small { display: block; font: 400 12px Inter, sans-serif; color: var(--muted); margin-top: 4px; letter-spacing: 0; }
+.panel h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+input[type=search], textarea, select { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--ui-line); border-radius: 6px; background: #fff; color: var(--ui-ink); }
+input[type=search]:focus, textarea:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--ui-accent) 35%, transparent); border-color: var(--ui-accent); }
+textarea { min-height: 70px; resize: vertical; font-size: 13px; }
+button { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--ui-line); background: #fff; color: var(--ui-ink); cursor: pointer; }
+button:hover { border-color: var(--ui-accent); color: var(--ui-accent); }
+button.primary { background: var(--ui-accent); color: #fff; border-color: var(--ui-accent); font-weight: 600; }
+button.primary:hover { background: #5e1711; color: #fff; }
+.results { list-style: none; margin: 6px 0 0; padding: 0; max-height: 260px; overflow: auto; border-radius: 6px; }
+.results li, .chosen li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; }
+.results li { cursor: pointer; }
+.results li:hover, .results li.hl { background: #efe9df; }
+.results .nm, .chosen .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.results .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.lvl-badge { font-size: 11px; font-weight: 600; min-width: 26px; text-align: center; padding: 1px 5px; border-radius: 4px; background: #e9e1d3; color: var(--ui-ink); }
+.chosen { list-style: none; margin: 0; padding: 0; }
+.chosen li { background: #fff; border: 1px solid var(--ui-line); margin-bottom: 4px; padding: 4px 4px 4px 8px; }
+.chosen li.loading .nm { color: var(--muted); font-style: italic; }
+.chosen li.err .nm { color: #a3261b; }
+.icon-btn { border: 0; background: transparent; padding: 2px 6px; color: var(--muted); font-size: 14px; line-height: 1; }
+.icon-btn:hover { color: var(--ui-accent); }
+.row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.opts { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; font-size: 13px; }
+.seg { display: inline-flex; justify-self: start;border: 1px solid var(--ui-line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 5px 10px; }
+.seg button + button { border-left: 1px solid var(--ui-line); }
+.seg button[aria-pressed=true] { background: var(--ui-accent); color: #fff; }
+.checks { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.checks label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.hint { font-size: 12px; color: var(--muted); }
+.msg { font-size: 12px; color: #a3261b; min-height: 1em; }
+
+main.preview { padding: 28px; overflow: auto; }
+.empty { max-width: 460px; margin: 15vh auto; text-align: center; color: var(--muted); }
+.empty b { font: 600 22px "Crimson Pro", Georgia, serif; color: var(--ui-ink); display: block; margin-bottom: 6px; }
+
+/* ---------- the printed sheet ---------- */
+.sheet { width: var(--sheet-w); margin: 0 auto; background: var(--paper); padding: 0.4in; box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 8px 30px rgba(0,0,0,.08); box-sizing: content-box;
+  column-count: var(--cols, 2); column-gap: 0.22in; column-fill: balance; color: var(--ink); }
+.sheet.cols-1 { column-rule: none; }
+.card { break-inside: avoid; page-break-inside: avoid; margin: 0 0 0.16in; font: var(--fs)/1.28 "Crimson Pro", Georgia, serif; display: block; }
+.card.tall, .sheet.split .card { break-inside: auto; page-break-inside: auto; }
+.card header, .card .traits { break-after: avoid; page-break-after: avoid; }
+.card p, .card .raw tr { break-inside: avoid; }
+.card header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; border-bottom: 1.5px solid var(--rule); padding-bottom: 1px; }
+.card h2 { margin: 0; font-size: 1.55em; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; line-height: 1.1; }
+.card .clvl { font-weight: 700; text-transform: uppercase; font-size: 1.25em; white-space: nowrap; letter-spacing: .03em; }
+.traits { display: flex; flex-wrap: wrap; gap: 2px; margin: 3px 0 2px; }
+.trait { font: 600 .82em/1 Inter, sans-serif; text-transform: uppercase; letter-spacing: .04em; padding: 2px 5px 2px; color: #fff; background: var(--trait); border: 1.5px solid var(--trait-edge);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.trait.uncommon { background: var(--uncommon); } .trait.rare { background: var(--rare); } .trait.unique { background: var(--unique); }
+.trait.size { background: var(--size); } .trait.align { background: var(--align); }
+.card p { margin: 0; padding-left: 1em; text-indent: -1em; }
+.card p.row { padding-left: 0; text-indent: 0; }
+.card p + p, .card p + .raw, .card .raw + p { margin-top: .12em; }
+.card hr { border: 0; border-top: 1px solid var(--rule); margin: .3em 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.card b { font-weight: 700; }
+.card h4 { margin: .4em 0 .1em; font-size: 1.1em; text-transform: uppercase; }
+.card .raw ul, .card .raw ol { margin: .1em 0 .1em 1.2em; padding-left: 1em; }
+.card .raw table { border-collapse: collapse; margin: .2em 0; font-size: .95em; }
+.card .raw td, .card .raw th { border: 1px solid #c9bfae; padding: 1px 4px; text-align: left; }
+.card .desc { font-style: italic; color: var(--muted); padding: 0; text-indent: 0; margin: 2px 0; }
+.card .rk { font-size: .92em; color: var(--muted); padding: 0; text-indent: 0; margin-bottom: 2px; }
+.card .lore { margin-top: .35em; border-left: 2px solid var(--trait-edge); padding: .1em 0 .1em .5em; font-size: .93em; }
+.card .lore h5 { margin: 0 0 .1em; font-size: 1em; text-transform: uppercase; letter-spacing: .03em; }
+.card .lore p { padding: 0; text-indent: 0; }
+.card footer { margin-top: .3em; font-size: .8em; color: var(--muted); font-style: italic; text-align: right; }
+.act { height: .82em; width: auto; vertical-align: -.05em; margin: 0 .12em; fill: var(--ink); color: var(--ink); }
+.act-sep { font-size: .85em; font-style: italic; }
+
+/* ink saver: outlined traits, no fills */
+.sheet.ink .trait { background: none !important; color: var(--ink); border: 1px solid var(--ink); }
+
+@media print {
+  body { background: #fff; }
+  .app { display: block; }
+  aside.panel, .empty { display: none !important; }
+  main.preview { padding: 0; overflow: visible; }
+  .sheet { width: auto; margin: 0; padding: 0; box-shadow: none; }
+}
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  aside.panel { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--ui-line); }
+  main.preview { padding: 16px; }
+  .sheet { width: auto; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <h1>PF2e Stat Blocks<small>Search Archives of Nethys, pick creatures, print.</small></h1>
+
+    <section>
+      <h3>Add creatures</h3>
+      <input id="q" type="search" placeholder="Search by name, e.g. goblin warrior" autocomplete="off">
+      <ul id="results" class="results"></ul>
+      <details style="margin-top:8px">
+        <summary class="hint" style="cursor:pointer">Add a list at once</summary>
+        <textarea id="bulk" placeholder="One name or AoN link per line&#10;Goblin Warrior&#10;https://2e.aonprd.com/Monsters.aspx?ID=4643"></textarea>
+        <div class="row-btns" style="margin-top:6px"><button id="bulkAdd">Add all</button></div>
+      </details>
+      <div id="msg" class="msg"></div>
+    </section>
+
+    <section>
+      <h3>Selected <span id="count"></span></h3>
+      <ul id="chosen" class="chosen"></ul>
+      <div class="row-btns"><button id="sortLvl">Sort by level</button><button id="clear">Clear</button></div>
+    </section>
+
+    <section>
+      <h3>Layout</h3>
+      <div class="opts">
+        <span>Columns</span><div class="seg" data-opt="cols"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button></div>
+        <span>Paper</span><div class="seg" data-opt="paper"><button data-v="letter">Letter</button><button data-v="a4">A4</button></div>
+        <span>Orientation</span><div class="seg" data-opt="orient"><button data-v="portrait">Portrait</button><button data-v="landscape">Landscape</button></div>
+        <span>Text size</span><div style="display:flex;gap:8px;align-items:center"><input id="fs" type="range" min="7" max="11" step="0.5" style="flex:1"><span id="fsv" class="hint"></span></div>
+      </div>
+      <div class="checks" style="margin-top:10px">
+        <label><input type="checkbox" data-opt="desc"> Description &amp; Recall Knowledge</label>
+        <label><input type="checkbox" data-opt="lore"> Lore sidebars</label>
+        <label><input type="checkbox" data-opt="source"> Source line</label>
+        <label><input type="checkbox" data-opt="ink"> Ink saver (no colored fills)</label>
+        <label><input type="checkbox" data-opt="split"> Let blocks split across columns (less white space)</label>
+      </div>
+    </section>
+
+    <div class="row-btns"><button class="primary" id="print">Print</button></div>
+    <p class="hint" style="margin:0">In the print dialog, turn off “Headers and footers” for a clean page. Data from <a href="https://2e.aonprd.com/Creatures.aspx" target="_blank" rel="noopener">2e.aonprd.com</a>.</p>
+  </aside>
+
+  <main class="preview">
+    <div id="empty" class="empty"><b>No creatures yet</b>Search on the left and click a result to add its stat block.</div>
+    <div id="sheet" class="sheet" hidden></div>
+  </main>
+</div>
+
+<script>
+/* ================= state ================= */
+const LS = 'pf2e-statblocks:v1';
+const PAPER = { letter: [8.5, 11], a4: [8.27, 11.69] };
+const MARGIN = 0.4;
+let state = { ids: [], cols: 2, paper: 'letter', orient: 'portrait', fs: 8.5, desc: false, lore: false, source: true, ink: false };
+try { Object.assign(state, JSON.parse(localStorage.getItem(LS) || '{}')); } catch {}
+const cache = new Map();      // id -> creature json | {error}
+const save = () => { try { localStorage.setItem(LS, JSON.stringify(state)); } catch {} };
+const $ = s => document.querySelector(s);
+
+/* ================= AoN markdown -> HTML ================= */
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const stripLinks = s => s.replace(/\[((?:[^\[\]]|\[[^\]]*\])*)\]\([^)]*\)/g, '$1');
+
+function diamonds(n) {
+  const w = 10 + 6.5 * (n - 1);
+  let d = '';
+  for (let i = 0; i < n; i++) { const x = i * 6.5; d += `<path d="M${x + 5} .6L${x + 9.4} 5L${x + 5} 9.4L${x + .6} 5Z" stroke="#fff" stroke-width="${i ? 1.1 : 0}"/>`; }
+  return `<svg class="act" viewBox="0 0 ${w} 10" aria-hidden="true">${d}</svg>`;
+}
+const GLYPH = {
+  'single action': () => diamonds(1), 'two actions': () => diamonds(2), 'three actions': () => diamonds(3),
+  'free action': () => `<svg class="act" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1L9 5L5 9L1 5Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 3.4L6.6 5L5 6.6L3.4 5Z"/></svg>`,
+  'reaction': () => `<svg class="act" viewBox="0 0 11 10" aria-hidden="true"><path d="M2.2 7.2A3.8 3.8 0 1 1 8.6 6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.4 5.2L10.4 4.6L9.4 8.8Z"/></svg>`,
+};
+function actions(str) {
+  if (!str.trim()) return '';
+  return str.split(/\s+(to|or)\s+/i).map(p => /^(to|or)$/i.test(p) ? `<span class="act-sep">${p.toLowerCase()}</span>`
+    : (GLYPH[p.trim().toLowerCase()] || (() => esc(p)))()).join('');
+}
+
+const ALLOWED = /^(ul|ol|li|table|tbody|thead|tr|td|th|sup|sub)$/i;
+function inline(s) {
+  s = stripLinks(s);
+  const slots = [];
+  s = s.replace(/<actions string="([^"]*)"\s*\/?>|<br\s*\/?>|<(\/?)([a-z][a-z0-9-]*)\b[^>]*>/gi, (m, act, close, tag) => {
+    let html = '';
+    if (act !== undefined) html = actions(act);
+    else if (/^<br/i.test(m)) html = '<br>';
+    else if (ALLOWED.test(tag)) html = `<${close}${tag.toLowerCase()}>`;
+    slots.push(html);
+    return `\u0000${slots.length - 1}\u0000`;
+  });
+  s = esc(s)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/(?<![\w*])_(?!\s)(.+?)(?<!\s)_(?!\w)/g, '<i>$1</i>')
+    .replace(/[ \t]{2,}/g, ' ');
+  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => slots[+i]).trim();
+}
+const plain = html => html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+
+// Turn the stat-block body (lines of AoN markdown) into HTML paragraphs.
+function renderBody(body) {
+  body = body.replace(/(<\/?(?:row|column|ul|ol|table)\b[^>]*>)/g, '\n$1\n');
+  const lines = body.split('\n');
+  const out = [];            // {html, key}
+  let para = [], row = null, rowCur = [], raw = null, depth = 0;
+
+  const flushPara = () => {
+    if (!para.length) return;
+    // markdown list items ("- **7th** ...") are rendered inline, book style
+    const lead = [], items = [];
+    for (const l of para) {
+      if (/^\s*-\s+/.test(l)) items.push([l.replace(/^\s*-\s+/, '')]);
+      else if (items.length) items[items.length - 1].push(l);
+      else lead.push(l);
+    }
+    let html = inline(lead.join(' '));
+    if (items.length) html += (html ? ' ' : '') + items.map(it => inline(it.join(' '))).join('; ');
+    para = [];
+    const txt = plain(html);
+    if (!txt || /^<b>[^<]*<\/b>$/.test(html)) return;   // empty label like "Languages"
+    // AoN sometimes repeats an ability verbatim; keep the later copy
+    const m = html.match(/^<b>([^<]+)<\/b>/);
+    const key = m && !/^(melee|ranged)$/i.test(m[1]) ? txt.toLowerCase().replace(/[^a-z0-9 ]/g, '').slice(0, 70) : null;
+    const prev = out[out.length - 1];
+    if (key && prev && prev.key === key) out.pop();
+    out.push({ html: `<p>${html}</p>`, key });
+  };
+  const flushRow = () => {
+    if (rowCur.length) row.push(rowCur), rowCur = [];
+  };
+
+  for (let line of lines) {
+    const t = line.trim();
+    if (raw !== null) {                       // inside <ul>/<ol>/<table>
+      raw.push(line);
+      if (/^<(ul|ol|table)\b/i.test(t)) depth++;
+      if (/^<\/(ul|ol|table)>/i.test(t) && --depth === 0) { out.push({ html: `<div class="raw">${inline(raw.join(' '))}</div>` }); raw = null; }
+      continue;
+    }
+    if (/^<(ul|ol|table)\b/i.test(t)) { flushPara(); raw = [line]; depth = 1; continue; }
+    if (/^<row\b/i.test(t)) { flushPara(); row = []; rowCur = []; continue; }
+    if (/^<\/row>/i.test(t)) {
+      flushRow();
+      const parts = row.map(p => inline(p.join(' '))).filter(Boolean);
+      if (parts.length) {
+        // "AC 16, Fort +5, Ref +7, Will +3; +1 status to all saves" — semicolon before unlabeled notes
+        const html = parts.map((p, i) => (i === 0 ? '' : /^<b>/.test(p) ? ', ' : '; ') + p).join('');
+        out.push({ html: `<p class="row">${html}</p>` });
+      }
+      row = null; continue;
+    }
+    if (row !== null) { if (t) rowCur.push(t); else flushRow(); continue; }
+    if (/^<\/?column\b/i.test(t)) { flushPara(); continue; }
+    if (/^---+$/.test(t)) { flushPara(); if (out.length && !/^<hr/.test(out[out.length - 1].html)) out.push({ html: '<hr>' }); continue; }
+    const h3 = t.match(/^<title level="3"[^>]*>(.*?)<\/title>(.*)$/i);
+    if (h3) { flushPara(); out.push({ html: `<h4>${inline(h3[1])}</h4>` }); if (h3[2].trim()) para.push(h3[2]); continue; }
+    if (!t) { flushPara(); continue; }
+    para.push(t);
+  }
+  flushPara();
+  while (out.length && out[out.length - 1].html === '<hr>') out.pop();
+  return out.map(o => o.html).join('');
+}
+
+const RARITY = ['uncommon', 'rare', 'unique'];
+const SIZES = ['tiny', 'small', 'medium', 'large', 'huge', 'gargantuan'];
+const ALIGN = ['lg', 'ng', 'cg', 'ln', 'n', 'cn', 'le', 'ne', 'ce'];
+
+function parseCreature(c) {
+  const md = (c.markdown || '').replace(/\r/g, '');
+  const start = md.search(/<title level="2" right="Creature/);
+  if (start < 0) return { name: c.name, level: `Creature ${c.level ?? ''}`, traits: [], body: '<p><i>Stat block not found in AoN data.</i></p>' };
+  const pre = md.slice(0, start);
+  let rest = md.slice(start);
+  const titleM = rest.match(/^<title level="2" right="([^"]*)"[^>]*>(.*?)<\/title>/);
+  rest = rest.slice(titleM[0].length);
+  // stat block ends at first aside / sub-document / next level-2 title
+  const endIdx = rest.search(/<aside>|<document\b|<title level="2"/);
+  let block = endIdx < 0 ? rest : rest.slice(0, endIdx);
+  const after = endIdx < 0 ? '' : rest.slice(endIdx);
+
+  const traits = [];
+  block = block.replace(/<traits>([\s\S]*?)<\/traits>/, (_, inner) => {
+    for (const m of inner.matchAll(/<trait label="([^"]*)"/g)) traits.push(m[1]);
+    return '';
+  });
+  let source = '';
+  block = block.replace(/^\*\*Source\*\*(.*)$/m, (_, s) => { source = plain(inline(s)); return ''; });
+
+  const lore = [...after.matchAll(/<aside>([\s\S]*?)<\/aside>/g)].map(m => {
+    const tt = m[1].match(/<title[^>]*>(.*?)<\/title>/);
+    const text = m[1].replace(/<title[^>]*>.*?<\/title>/, '').trim().split(/\n\s*\n/).map(p => `<p>${inline(p.replace(/\n/g, ' '))}</p>`).join('');
+    return `<div class="lore">${tt ? `<h5>${inline(tt[1])}</h5>` : ''}${text}</div>`;
+  });
+
+  const rkM = pre.match(/\*\*\[?Recall Knowledge[\s\S]*?(?=<\/column>)/);
+  const rk = rkM ? rkM[0].trim().split(/\n\s*\n/).map(p => inline(p.replace(/\n/g, ' '))).join(' · ') : '';
+
+  return {
+    name: plain(inline(titleM[2])), level: titleM[1], traits, source,
+    summary: c.summary || '', rk, lore: lore.join(''), body: renderBody(block),
+  };
+}
+
+function traitClass(t) {
+  const l = t.toLowerCase();
+  if (RARITY.includes(l)) return 'trait ' + l;
+  if (SIZES.includes(l)) return 'trait size';
+  if (ALIGN.includes(l)) return 'trait align';
+  return 'trait';
+}
+function cardHTML(p) {
+  const order = t => RARITY.includes(t.toLowerCase()) ? 0 : ALIGN.includes(t.toLowerCase()) ? 1 : SIZES.includes(t.toLowerCase()) ? 2 : 3;
+  const traits = [...p.traits].sort((a, b) => order(a) - order(b));
+  return `<article class="card">
+    <header><h2>${esc(p.name)}</h2><span class="clvl">${esc(p.level)}</span></header>
+    <div class="traits">${traits.map(t => `<span class="${traitClass(t)}">${esc(t)}</span>`).join('')}</div>
+    ${state.desc && p.summary ? `<p class="desc">${esc(p.summary)}</p>` : ''}
+    ${state.desc && p.rk ? `<p class="rk">${p.rk}</p>` : ''}
+    ${p.body}
+    ${state.lore ? p.lore : ''}
+    ${state.source && p.source ? `<footer>${esc(p.source)}</footer>` : ''}
+  </article>`;
+}
+
+/* ================= data ================= */
+// Opened straight from disk (file://)? Talk to the local server on its default port.
+const API_BASE = /^https?:$/.test(location.protocol) ? '' : 'http://127.0.0.1:8765';
+const NO_SERVER = 'Can’t reach the local server. Start it by double-clicking “Start Stat Blocks.cmd” (or run python statblocks.py), then reload.';
+async function api(path) {
+  let r;
+  try { r = await fetch(API_BASE + path); }
+  catch { throw new Error(NO_SERVER); }
+  const j = await r.json();
+  if (!r.ok || j.error) throw new Error(j.error || r.statusText);
+  return j;
+}
+async function load(id) {
+  if (cache.has(id) && !cache.get(id).error) return;
+  cache.set(id, { loading: true });
+  renderList();
+  try { const c = await api(`/api/creature?id=${encodeURIComponent(id)}`); c.parsed = parseCreature(c); cache.set(id, c); }
+  catch (e) { cache.set(id, { error: e.message }); }
+  renderAll();
+}
+function add(id) {
+  state.ids.push(id); save(); load(id); renderAll();
+}
+const idFromUrl = s => { const m = s.match(/[?&]ID=(\d+)/i); return m && /aonprd|aspx/i.test(s) ? `creature-${m[1]}` : null; };
+
+/* ================= rendering ================= */
+function applyLayout() {
+  const [w, h] = PAPER[state.paper];
+  const pw = state.orient === 'portrait' ? w : h;
+  document.documentElement.style.setProperty('--sheet-w', `${pw - 2 * MARGIN}in`);
+  document.documentElement.style.setProperty('--fs', `${state.fs}pt`);
+  $('#pagecss').textContent = `@page { size: ${state.paper === 'a4' ? 'A4' : 'letter'} ${state.orient}; margin: ${MARGIN}in; }`;
+  const sheet = $('#sheet');
+  sheet.style.setProperty('--cols', state.cols);
+  sheet.className = `sheet cols-${state.cols}${state.ink ? ' ink' : ''}${state.split ? ' split' : ''}`;
+  document.querySelectorAll('.seg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v == state[seg.dataset.opt]))));
+  document.querySelectorAll('input[type=checkbox][data-opt]').forEach(c => c.checked = !!state[c.dataset.opt]);
+  $('#fs').value = state.fs; $('#fsv').textContent = `${state.fs} pt`;
+}
+function renderList() {
+  $('#count').textContent = state.ids.length ? `(${state.ids.length})` : '';
+  $('#chosen').innerHTML = state.ids.map((id, i) => {
+    const c = cache.get(id) || {};
+    const cls = c.error ? 'err' : c.loading || !c.name ? 'loading' : '';
+    const nm = c.error ? `${id}: ${c.error}` : c.name || 'Loading…';
+    return `<li class="${cls}"><span class="lvl-badge">${c.level ?? '…'}</span><span class="nm" title="${esc(nm)}">${esc(nm)}</span>
+      <button class="icon-btn" data-act="up" data-i="${i}" title="Move up" aria-label="Move up">↑</button>
+      <button class="icon-btn" data-act="down" data-i="${i}" title="Move down" aria-label="Move down">↓</button>
+      <button class="icon-btn" data-act="rm" data-i="${i}" title="Remove" aria-label="Remove">✕</button></li>`;
+  }).join('');
+}
+function renderSheet() {
+  const parsed = state.ids.map(id => cache.get(id)).filter(c => c && c.parsed);
+  $('#empty').hidden = parsed.length > 0;
+  $('#sheet').hidden = parsed.length === 0;
+  $('#sheet').innerHTML = parsed.map(c => cardHTML(c.parsed)).join('');
+  // a block taller than a page must be allowed to split, or it gets clipped
+  const [w, h] = PAPER[state.paper];
+  const pageH = ((state.orient === 'portrait' ? h : w) - 2 * MARGIN) * 96;
+  document.querySelectorAll('#sheet .card').forEach(el => el.classList.toggle('tall', el.offsetHeight > pageH * 0.95));
+}
+function renderAll() { applyLayout(); renderList(); renderSheet(); }
+
+/* ================= search UI ================= */
+let timer, results = [], hl = -1;
+$('#q').addEventListener('input', () => {
+  clearTimeout(timer);
+  const q = $('#q').value.trim();
+  if (!q) { $('#results').innerHTML = ''; return; }
+  timer = setTimeout(async () => {
+    const id = idFromUrl(q);
+    if (id) { results = [{ id, name: `Add ${id} from link`, level: '' }]; return showResults(); }
+    try { results = await api(`/api/search?q=${encodeURIComponent(q)}`); $('#msg').textContent = ''; }
+    catch (e) { results = []; $('#msg').textContent = e.message; }
+    if (q !== $('#q').value.trim()) return;           // a newer query is in flight
+    if (results.length || !$('#msg').textContent) showResults(); else $('#results').innerHTML = '';
+  }, 220);
+});
+function showResults() {
+  hl = results.length ? 0 : -1;
+  $('#results').innerHTML = results.length ? results.map((r, i) => `<li data-i="${i}" class="${i === hl ? 'hl' : ''}"><span class="lvl-badge">${r.level ?? ''}</span>
+    <span class="nm">${esc(r.name)}</span><span class="meta">${esc((r.source || [])[0] || '')}</span></li>`).join('')
+    : `<li class="hint">No matches</li>`;
+}
+function pick(i) {
+  const r = results[i]; if (!r) return;
+  add(r.id);
+  $('#q').value = ''; $('#results').innerHTML = ''; results = []; $('#q').focus();
+}
+$('#results').addEventListener('mousedown', e => { const li = e.target.closest('li[data-i]'); if (li) { e.preventDefault(); pick(+li.dataset.i); } });
+$('#q').addEventListener('keydown', e => {
+  const lis = [...document.querySelectorAll('#results li[data-i]')];
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); if (!lis.length) return;
+    hl = (hl + (e.key === 'ArrowDown' ? 1 : -1) + lis.length) % lis.length;
+    lis.forEach((li, i) => li.classList.toggle('hl', i === hl)); lis[hl].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') { e.preventDefault(); if (hl >= 0) pick(hl); }
+  else if (e.key === 'Escape') { $('#results').innerHTML = ''; }
+});
+
+$('#bulkAdd').addEventListener('click', async () => {
+  const lines = $('#bulk').value.split('\n').map(s => s.trim()).filter(Boolean);
+  const missing = [];
+  for (const line of lines) {
+    const id = idFromUrl(line);
+    if (id) { add(id); continue; }
+    try {
+      const hits = await api(`/api/search?q=${encodeURIComponent(line)}`);
+      const exact = hits.find(h => h.name.toLowerCase() === line.toLowerCase());
+      if (exact || hits[0]) add((exact || hits[0]).id); else missing.push(line);
+    } catch { missing.push(line); }
+  }
+  $('#bulk').value = missing.join('\n');
+  $('#msg').textContent = missing.length ? `Not found: ${missing.join(', ')}` : '';
+});
+
+$('#chosen').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const i = +b.dataset.i, ids = state.ids;
+  if (b.dataset.act === 'rm') ids.splice(i, 1);
+  if (b.dataset.act === 'up' && i > 0) [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
+  if (b.dataset.act === 'down' && i < ids.length - 1) [ids[i + 1], ids[i]] = [ids[i], ids[i + 1]];
+  save(); renderAll();
+});
+$('#sortLvl').addEventListener('click', () => {
+  const lv = id => +(cache.get(id)?.level ?? 99);
+  state.ids.sort((a, b) => lv(a) - lv(b) || (cache.get(a)?.name || '').localeCompare(cache.get(b)?.name || '')); save(); renderAll();
+});
+$('#clear').addEventListener('click', () => { state.ids = []; save(); renderAll(); });
+
+document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const v = b.dataset.v; state[seg.dataset.opt] = isNaN(+v) ? v : +v; save(); renderAll();
+}));
+document.querySelectorAll('input[type=checkbox][data-opt]').forEach(c => c.addEventListener('change', () => { state[c.dataset.opt] = c.checked; save(); renderAll(); }));
+$('#fs').addEventListener('input', e => { state.fs = +e.target.value; save(); renderAll(); });
+$('#print').addEventListener('click', () => window.print());
+
+// ?ids=creature-1,creature-2 preloads a set (used for testing / sharing a link)
+const qp = new URLSearchParams(location.search).get('ids');
+if (qp) state.ids = qp.split(',').filter(s => /^creature-\d+$/.test(s));
+for (const k of ['cols', 'fs']) { const v = new URLSearchParams(location.search).get(k); if (v) state[k] = +v; }
+renderAll();
+state.ids.forEach(load);
+</script>
+</body>
+</html>
